@@ -1,0 +1,42 @@
+# Default values for hashicorp-vault.
+# This is a wrapper chart, so we primarily configure the subchart 'vault'.
+
+vault:
+  global:
+    openshift: true
+
+  server:
+    # Standalone mode for local development (Simpler, no Raft HA)
+    ha:
+      enabled: false
+
+    # Explicitly set image to avoid Red Hat registry issues on some clusters
+    image:
+      repository: docker.io/hashicorp/vault
+      tag: "1.14.0"
+
+    # Enable persistence for standalone mode
+    dataStorage:
+      enabled: true
+      size: 5Gi
+      storageClass: null # Use default storage class
+
+    # OpenShift Route configuration
+    route:
+      enabled: true
+      host: "" # Leave empty to autogenerate or specify a hostname
+      tls:
+        termination: edge
+
+    # Security Context Constraints (SCC) are handled by the chart with global.openshift: true
+    # but we might need to ensure the service account has permissions.
+    # The official chart handles SCC binding if global.openshift is true.
+
+  injector:
+    enabled: false # Disable agent injector by default to keep it simple, enable if needed
+    
+  ui:
+    enabled: true
+    serviceType: ClusterIP
+    serviceNodePort: null
+    externalPort: 8200

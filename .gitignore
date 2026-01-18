@@ -1,0 +1,12 @@
+# Secrets
+secret.md
+*.key
+*.token
+
+# Helm dependencies
+charts/
+tmpcharts/
+Chart.lock
+
+# OS specific
+.DS_Store

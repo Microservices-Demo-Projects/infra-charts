@@ -1,0 +1,33 @@
+# External Secrets Operator configuration
+# See README.md for detailed explanation of CRD management
+external-secrets:
+  installCRDs: true  # Disable CRD installation via Helm (recommended for production)
+  # By default, this uses the upstream chart's default behavior. See README.md section "CRD Management" for best practices
+
+# ClusterSecretStore configuration
+# This creates a cluster-wide secret store that can be referenced by ExternalSecrets in any namespace
+clusterSecretStore:
+  required: false
+  name: local-vault-backend
+  
+  vault:
+    # Local HashiCorp Vault server address
+    server: "http://vault.vault.svc.cluster.local:8200"
+    
+    # Kubernetes authentication method configuration
+    auth:
+      kubernetes:
+        # Mount path where Kubernetes auth method is enabled in Vault
+        # This must match: vault auth enable -path=<mountPath> kubernetes
+        mountPath: "kubernetes"
+        
+        # Vault role name for authentication
+        # This must match the role created in Vault with:
+        # vault write auth/kubernetes/role/<role> ...
+        role: "external-secrets"
+        
+        # Service account used for authentication with Vault
+        # This should be the service account created by the external-secrets chart
+        # Default is "external-secrets" (the chart's default SA name)
+        serviceAccountRef:
+          name: "external-secrets"

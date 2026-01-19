@@ -150,6 +150,37 @@ We will configure the local HashiCorp Vault (deployed in the `vault` namespace) 
 - HashiCorp Vault installed and unsealed in `vault` namespace (see `infra-charts/hashicorp-vault/README.md`).
 - External Secrets Operator installed in `external-secrets` namespace (Phase 1 of this readme completed).
 
+### Login to Vault
+
+You must authenticate as a root user (or a user with sufficient permissions) to configure auth methods.
+
+```bash
+# Log in to Vault interactively
+oc exec -ti vault-0 -n vault -- vault login
+# (Paste your Initial Root Token when prompted)
+```
+
+**Expected Output:**
+
+```text
+Token (will be hidden): 
+Success! You are now authenticated. The token information displayed below
+is already stored in the token helper. You do NOT need to run "vault login"
+again. Future Vault requests will automatically use this token.
+
+Key                  Value
+---                  -----
+token                <root-token>
+token_accessor       <token-accessor>
+token_duration       ∞
+token_renewable      false
+token_policies       ["root"]
+identity_policies    []
+policies             ["root"]
+```
+
+### Configure Vault
+
 Run the following commands:
 
 ```bash
@@ -160,16 +191,16 @@ oc exec -ti vault-0 -n vault -- vault auth enable kubernetes
 oc exec -ti vault-0 -n vault -- vault write auth/kubernetes/config \
     kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
 
-# 3. Create a policy named 'secret-policy' that allows reading secrets
+# 3. Create a policy named 'external-secrets-readonly-policy' that allows reading secrets
 echo 'path "secret/*" {
   capabilities = ["read"]
-}' | oc exec -i vault-0 -n vault -- vault policy write secret-policy -
+}' | oc exec -i vault-0 -n vault -- vault policy write external-secrets-readonly-policy -
 
 # 4. Create the role 'external-secrets' binding the ServiceAccount to the policy
 oc exec -ti vault-0 -n vault -- vault write auth/kubernetes/role/external-secrets \
     bound_service_account_names=external-secrets \
     bound_service_account_namespaces=external-secrets \
-    policies=external-secrets-readonly \
+    policies=external-secrets-readonly-policy \
     ttl=24h
 ```
 
@@ -177,7 +208,7 @@ oc exec -ti vault-0 -n vault -- vault write auth/kubernetes/role/external-secret
 
 Now that Vault is ready, we update the Helm release to create the `ClusterSecretStore` resource.
 
-**Option A: Command Line Flag**
+### Option A: Command Line Flag
 
 ```bash
 # Upgrade the release enabling the store
@@ -185,7 +216,7 @@ helm upgrade external-secrets . -n external-secrets \
   --set clusterSecretStore.required=true
 ```
 
-**Option B: Values File (Recommended)**
+### Option B: Values File (Recommended)
 
 1. Edit `values.yaml` and set:
 

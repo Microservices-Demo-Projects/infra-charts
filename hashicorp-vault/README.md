@@ -49,7 +49,7 @@ Deploy the chart to the `vault` namespace.
 helm upgrade --install vault . --namespace vault --create-namespace
 ```
 
-### 3. Post-Deployment Initialization (REQUIRED)
+### 3. Post-Deployment: Initialize and Unseal Vault (REQUIRED)
 Vault starts in a **sealed** and **uninitialized** state. The pod will NOT be "Ready" until it is initialized and unsealed.
 
 1. **Initialize Vault:**
@@ -190,5 +190,15 @@ To remove the deployment completely:
 helm uninstall vault --namespace vault
 
 # Optional: Delete the namespace and PVCs (Wait for uninstall to finish first)
-oc delete namespace vault
+oc delete project vault
 ```
+
+---
+
+## Next Steps
+
+Once Vault is running and unsealed, you can integrate it with other services:
+
+- **External Secrets Operator**: Automatically sync secrets from Vault to Kubernetes Secrets
+  - See [External Secrets README](../external-secrets/README.md) for setup instructions
+  - Make sure to save your root token - you'll need it for the integration steps

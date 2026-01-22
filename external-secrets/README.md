@@ -213,10 +213,56 @@ oc exec -ti vault-0 -n vault -- sh -c 'vault write auth/kubernetes/config \
 # 3. Enable KV engine at path 'kv' (if not already enabled)
 oc exec -ti vault-0 -n vault -- /bin/sh -c 'vault secrets list | grep -q "^kv/" || vault secrets enable -path=kv kv'
 
-# 4. Create a policy named 'external-secrets-readonly-policy' that allows reading secrets from 'kv' path
-# For KV v2, we need permissions on 'kv/data/*'
+# 4. Create a Vault policy for External Secrets
+# The policy controls what secrets the External Secrets Operator can access.
+# Choose one of the examples below based on your requirements and secret engine types:
+
+# Example 1: KV Version 2 Secret Engine (Default - Recommended for Production)
+# KV v2 stores data at 'path/data/*' and metadata at 'path/metadata/*'
+# This is the most common secret engine for static key-value secrets
 echo 'path "kv/data/*" {
   capabilities = ["read"]
+}' | oc exec -i vault-0 -n vault -- vault policy write external-secrets-readonly-policy -
+
+# Example 2: All Secret Engines (POC/Development Only)
+# WARNING: This grants read access to ALL secrets in Vault - use only for POC/testing!
+# This is useful when you want to quickly test without worrying about specific paths
+echo 'path "*" {
+  capabilities = ["read", "list"]
+}' | oc exec -i vault-0 -n vault -- vault policy write external-secrets-readonly-policy -
+
+# Example 3: Multiple Secret Engine Types (Recommended for Production Multi-Service Environments)
+# This sample policy combines access to different types of secret engines
+# Useful when your application needs various types of secrets
+echo '# KV v2 for static application secrets
+path "kv/data/app/*" {
+  capabilities = ["read"]
+}
+
+# Database engine for dynamic database credentials
+path "database/creds/postgres-readonly" {
+  capabilities = ["read"]
+}
+path "database/creds/mysql-app" {
+  capabilities = ["read"]
+}
+
+# AWS engine for dynamic AWS credentials
+path "aws/creds/s3-readonly" {
+  capabilities = ["read"]
+}
+
+# PKI for certificate issuance
+path "pki/issue/app-cert" {
+  capabilities = ["create", "update"]
+}
+
+# Transit for encryption operations
+path "transit/encrypt/app-key" {
+  capabilities = ["update"]
+}
+path "transit/decrypt/app-key" {
+  capabilities = ["update"]
 }' | oc exec -i vault-0 -n vault -- vault policy write external-secrets-readonly-policy -
 
 # 5. Create the role 'external-secrets' binding the ServiceAccount to the policy
@@ -225,6 +271,78 @@ oc exec -ti vault-0 -n vault -- vault write auth/kubernetes/role/external-secret
     bound_service_account_namespaces=external-secrets \
     policies=external-secrets-readonly-policy \
     ttl=24h
+```
+
+#### Attaching Multiple Vault Policies to a Service Account Token
+
+Vault supports attaching multiple policies to a single Kubernetes role, which allows fine-grained access control by combining different policy permissions. This is useful when you want to:
+
+- Separate concerns (e.g., one policy for app secrets, another for database credentials)
+- Gradually add permissions without modifying existing policies
+- Implement least-privilege access by composing small, focused policies
+
+**How It Works:**
+
+When multiple policies are attached to a role, the resulting token will have the **union** of all permissions from all attached policies. This means the token can access any path allowed by any of the policies.
+
+**Example: Creating and Attaching Multiple Policies**
+
+```bash
+# Create a first policy for application secrets (KV v2 engine)
+echo 'path "kv/data/app/*" {
+  capabilities = ["read"]
+}' | oc exec -i vault-0 -n vault -- vault policy write app-secrets-policy -
+
+# Create a second policy for database credentials (Database engine)
+echo 'path "database/creds/postgres-readonly" {
+  capabilities = ["read"]
+}
+path "database/creds/mysql-app" {
+  capabilities = ["read"]
+}' | oc exec -i vault-0 -n vault -- vault policy write db-creds-policy -
+
+# Create a third policy for AWS credentials (AWS engine)
+echo 'path "aws/creds/s3-readonly" {
+  capabilities = ["read"]
+}
+path "aws/sts/deploy-role" {
+  capabilities = ["read"]
+}' | oc exec -i vault-0 -n vault -- vault policy write aws-creds-policy -
+
+# Attach all three policies to the external-secrets role
+# Note: Policies are specified as a comma-separated list
+oc exec -ti vault-0 -n vault -- vault write auth/kubernetes/role/external-secrets \
+    bound_service_account_names=external-secrets \
+    bound_service_account_namespaces=external-secrets \
+    policies=app-secrets-policy,db-creds-policy,aws-creds-policy \
+    ttl=24h
+```
+
+**Updating an Existing Role with Additional Policies:**
+
+If you already have a role configured and want to add more policies:
+
+```bash
+# Read the current role configuration to see existing policies
+oc exec -ti vault-0 -n vault -- vault read auth/kubernetes/role/external-secrets
+
+# Update the role with additional policies (this replaces the policies list)
+# Make sure to include ALL policies you want, not just the new ones
+oc exec -ti vault-0 -n vault -- vault write auth/kubernetes/role/external-secrets \
+    bound_service_account_names=external-secrets \
+    bound_service_account_namespaces=external-secrets \
+    policies=external-secrets-readonly-policy,new-policy-name \
+    ttl=24h
+```
+
+**Verification:**
+
+```bash
+# Verify the policies attached to the role
+oc exec -ti vault-0 -n vault -- vault read auth/kubernetes/role/external-secrets
+
+# Expected output will show the policies field with all attached policies:
+# policies    [app-secrets-policy db-creds-policy aws-creds-policy]
 ```
 
 ### Step 2: Enable ClusterSecretStore

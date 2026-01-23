@@ -1,0 +1,59 @@
+{{- if .Values.demoClusterRootCA.required }}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: self-signed
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: root-ca
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "2"
+spec:
+  secretName: root-ca-tls
+  isCA: true
+  duration: 8760h # 1 year
+  renewBefore: 240h # 10 days
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  subject:
+    organizationalUnits:
+    - "Demo Root CA"
+    organizations:
+    - "Demo Apps"
+    countries:
+    - "CA"
+  commonName: "Demo Root CA"
+  dnsNames:
+    - "demo-ca"
+  issuerRef:
+    name: self-signed
+    kind: ClusterIssuer
+    group: cert-manager.io
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: demo
+      app.kubernetes.io/part-of: Microservices-Demo-Projects
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: demo-ca
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "3"
+spec:
+  ca:
+    secretName: root-ca-tls
+{{- end }}

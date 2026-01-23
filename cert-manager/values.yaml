@@ -1,0 +1,12 @@
+# Default values for cert-manager wrapper chart.
+# This chart is a wrapper around the official jetstack/cert-manager chart.
+
+cert-manager:
+  # Install CRDs by default for ease of use in this demo environment
+  crds:
+    enabled: true
+    keep: true
+
+# Configuration for additional ClusterIssuers and CA certificates
+demoClusterRootCA:
+  required: true

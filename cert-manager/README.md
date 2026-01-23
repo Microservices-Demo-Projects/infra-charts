@@ -20,7 +20,7 @@ Additionally, this wrapper chart includes ClusterIssuers and CA certificate temp
 
 - **ClusterIssuer**: `self-signed` - A self-signed ClusterIssuer
 - **ClusterIssuer**: `demo-ca` - A ClusterIssuer that uses a root CA certificate
-- **Certificate**: `root-ca` - A root CA certificate that can be used to sign other certificates
+- **Certificate**: `demo-root-ca` - A root CA certificate that can be used to sign other certificates
 
 These resources are created using Helm hooks to ensure they're installed after cert-manager CRDs are available. They can be disabled by setting `demoClusterRootCA.required` to `false` in the values.yaml file.
 
@@ -40,16 +40,9 @@ helm dependency update .
 ```bash
 # Install the chart
 helm upgrade --install cert-manager . --namespace cert-manager --create-namespace
-
-# Wait for cert-manager to be ready
-oc wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=120s
-
-# Verify the demo CA resources were created (if enabled)
-oc get clusterissuer self-signed demo-ca
-oc get certificate root-ca -n cert-manager
 ```
 
-> [!NOTE]
+> [!WARNING]
 > **Helm Hooks**: The demo CA resources (ClusterIssuers and root CA Certificate) use Helm `post-install` and `post-upgrade` hooks to ensure they're created after cert-manager's CRDs are installed. This prevents the "no matches for kind" error that would occur if these resources were created before the CRDs exist.
 
 ## Verification
@@ -61,12 +54,16 @@ oc get pods -n cert-manager
 # Verify CRDs
 oc get crd | grep cert-manager
 
-# Check ClusterIssuers
+# Wait for cert-manager to be ready
+oc wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=120s
+
+# Verify the demo CA resources were created (if enabled)
 oc get clusterissuer
 
 # Check root CA certificate status
-oc get certificate root-ca -n cert-manager
-oc describe certificate root-ca -n cert-manager
+oc get certificate demo-root-ca -n cert-manager
+oc describe certificate demo-root-ca -n cert-manager
+oc describe secret demo-root-ca-tls -n cert-manager
 ```
 
 ## Configuration Updates
@@ -186,6 +183,7 @@ EOF
 # Verify the certificate
 oc get certificate example-cert -n test-certs
 oc get secret example-cert-tls -n test-certs
+oc describe secret example-cert-tls -n test-certs
 
 # Cleanup
 oc delete project test-certs

@@ -6,8 +6,9 @@ This chart is a wrapper around the official [`jetstack/cert-manager`](https://ar
 > **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
 >
 > 1. **Cert-Manager** (Current)
-> 2. [HashiCorp Vault](../hashicorp-vault/README.md)
-> 3. [External Secrets](../external-secrets/README.md)
+> 2. [Kubernetes Dashboard](../kubernetes-dashboard/README.md) (Not Required if you are using OpenShift Console)
+> 3. [HashiCorp Vault](../hashicorp-vault/README.md)
+> 4. [External Secrets](../external-secrets/README.md)
 
 > [!WARNING]
 > In below commands I have mostly used `oc` commands. Please use the appropriate `kubectl` commands instead if you are not in OpenShift environment.

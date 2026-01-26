@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: vault-tls
+  issuerRef:
+    name: demo-ca
+    kind: ClusterIssuer
+  commonName: vault.{{ .Release.Namespace }}.svc
+  dnsNames:
+  - vault
+  - vault.{{ .Release.Namespace }}
+  - vault.{{ .Release.Namespace }}.svc
+  - vault.{{ .Release.Namespace }}.svc.cluster.local
+  ipAddresses:
+  - 127.0.0.1

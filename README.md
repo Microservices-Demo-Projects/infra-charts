@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains infrastructure Helm charts for demo projects created in this github org, including HashiCorp Vault, External Secrets Operator, Stakater Reloader (for dynamic configuration reloading), and other essential infrastructure components.
+This repository contains infrastructure Helm charts for demo projects created in this github org, including cert-manager, HashiCorp Vault, External Secrets Operator, Stakater Reloader (for dynamic configuration reloading), and other essential infrastructure components.
 
 ### Prerequisites
 

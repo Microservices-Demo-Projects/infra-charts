@@ -1,4 +1,4 @@
-# HashiCorp Vault
+# HashiCorp Vault Wrapper Chart
 
 This chart is a wrapper around the official [`hashicorp/vault`](https://artifacthub.io/packages/helm/hashicorp/vault) chart, pre-configured for OpenShift and standard Kubernetes environments.
 

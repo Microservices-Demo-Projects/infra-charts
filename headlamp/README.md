@@ -1,4 +1,4 @@
-# Headlamp Installation
+# Headlamp Chart Customizations
 
 This chart installs [Headlamp](https://headlamp-k8s.github.io/headlamp/), an easy-to-use and extensible Kubernetes web UI.
 

@@ -1,4 +1,4 @@
-# External Secrets Operator Helm Chart
+# External Secrets Operator Wrapper Chart
 
 This is a wrapper Helm chart for External Secrets Operator with HashiCorp Vault integration, pre-configured for OpenShift and standard Kubernetes environments.
 

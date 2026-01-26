@@ -6,7 +6,7 @@ This chart is a wrapper around the official [`jetstack/cert-manager`](https://ar
 > **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
 >
 > 1. **Cert-Manager** (Current)
-> 2. [Kubernetes Dashboard](../kubernetes-dashboard/README.md) (Not Required if you are using OpenShift Console)
+> 2. [Headlamp](../headlamp/README.md) (Not Required if you are using OpenShift Console)
 > 3. [HashiCorp Vault](../hashicorp-vault/README.md)
 > 4. [External Secrets](../external-secrets/README.md)
 
@@ -25,7 +25,14 @@ Additionally, this wrapper chart includes ClusterIssuers and CA certificate temp
 
 These resources are created using Helm hooks to ensure they're installed after cert-manager CRDs are available. They can be disabled by setting `demoClusterRootCA.required` to `false` in the values.yaml file.
 
-## Setup
+## Prerequisites
+
+- Kubernetes Cluster (OpenShift or Standard)
+- Helm 3+ installed
+
+## Installation
+
+### 1. Setup
 
 ```bash
 # Add repository
@@ -36,7 +43,7 @@ helm repo update
 helm dependency update .
 ```
 
-## Installation
+### 2. Deploy
 
 ```bash
 # Install the chart
@@ -67,7 +74,7 @@ oc describe certificate demo-root-ca -n cert-manager
 oc describe secret demo-root-ca-tls -n cert-manager
 ```
 
-## Configuration Updates
+## Configuration
 
 > [!NOTE]
 > **Subchart Nesting**: Since this chart is a **wrapper** around the official [jetstack/cert-manager](https://artifacthub.io/packages/helm/cert-manager/cert-manager) chart. All configurations of the `cert-manager` must be nested under the `cert-manager:` key of `values.yaml`. This is a standard Helm pattern for wrapper charts, where you place any configuration intended for a subchart under a key matching its `dependencies[].name` mentioned in `Chart.yaml` file.
@@ -186,8 +193,28 @@ oc get certificate example-cert -n test-certs
 oc get secret example-cert-tls -n test-certs
 oc describe secret example-cert-tls -n test-certs
 
-# Cleanup
+# Cleanup Test Resources
 oc delete project test-certs
 # or
 kubectl delete namespace test-certs
 ```
+
+## Pause & Resume Development
+
+To "turn off" the cert-manager application without deleting configuration or data, you can scale the replicas to 0.
+
+**To Pause (Stop Pods):**
+
+```bash
+oc scale deployment cert-manager --replicas=0 -n cert-manager
+```
+
+**To Resume (Start Pods):**
+
+```bash
+oc scale deployment cert-manager --replicas=1 -n cert-manager
+```
+
+*Note: Since cert-manager is a controller, scaling back to 1 replica will restart the controller and it will continue to function normally.*
+
+**IMPORTANT:** When cert-manager restarts, it should continue to function normally without any additional steps required. The certificates and configurations will remain intact.

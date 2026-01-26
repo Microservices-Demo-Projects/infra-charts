@@ -1,16 +1,29 @@
 # Headlamp Installation
 
+This chart installs [Headlamp](https://headlamp-k8s.github.io/headlamp/), an easy-to-use and extensible Kubernetes web UI.
+
 > [!WARNING]
 > **OpenShift Users**: OpenShift includes a built-in web console. This Headlamp installation is **only for standard Kubernetes clusters**. If you're running OpenShift, skip this installation.
 
-Simple guide to installing Headlamp with TLS and administrative access.
+> [!NOTE]
+> **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
+>
+> 1. [Cert-Manager](../cert-manager/README.md)
+> 2. **Headlamp** (Current)
+> 3. [HashiCorp Vault](../hashicorp-vault/README.md)
+> 4. [External Secrets](../external-secrets/README.md)
+
+## Overview
+
+Headlamp provides a modern, developer-friendly dashboard for managing Kubernetes clusters. This installation is pre-configured with TLS support via Cert-Manager and provides internal service access.
 
 ## Prerequisites
 
-- Standard Kubernetes cluster.
+- Standard Kubernetes cluster (Headlamp is not needed for OpenShift, skip the steps in this readme if you are running OpenShift).
+- Helm 3+ installed.
 - [Cert Manager](../cert-manager/README.md) installed with the `demo-ca` ClusterIssuer.
 
-## Installation Steps
+## Installation
 
 ### 1. Setup Namespace and Certificates
 
@@ -50,6 +63,10 @@ helm repo update
 # Check available versions
 helm search repo headlamp/headlamp --versions
 
+# Download dependencies (if any)
+helm dependency update .
+
+# Install the chart
 helm upgrade --install headlamp headlamp/headlamp \
   --namespace headlamp \
   --values values.yaml \
@@ -64,11 +81,11 @@ The current Headlamp chart (v0.39.0) has a limitation where health check probes 
 kubectl patch deployment headlamp -n headlamp --type=json -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/scheme", "value": "HTTPS"},{"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/scheme", "value": "HTTPS"}]'
 ```
 
-### 4. Verfication & Troubleshooting
+## Verification
 
 Check the status to ensure the patch was applied and the pod becomes `READY 1/1`.
 
-**Check Status & Events:**
+### 1. Status & Events
 
 ```bash
 # General status check
@@ -81,7 +98,7 @@ kubectl get events -n headlamp --sort-by='.lastTimestamp'
 kubectl get svc headlamp -n headlamp -o yaml
 ```
 
-**Certificate Issues:**
+### 2. Certificate Status
 
 ```bash
 # Verify certificate status
@@ -91,7 +108,7 @@ kubectl get certificate headlamp-tls -n headlamp
 kubectl get secret headlamp-tls -n headlamp
 ```
 
-**View Logs:**
+### 3. Logs
 
 ```bash
 kubectl logs -n headlamp -l app.kubernetes.io/name=headlamp
@@ -192,3 +209,23 @@ kubectl get secret headlamp-view-token -n headlamp -o jsonpath="{.data.token}" |
 helm uninstall headlamp -n headlamp
 kubectl delete namespace headlamp
 ```
+
+## Pause & Resume Development
+
+To "turn off" the Headlamp application without deleting configuration or data, you can scale the replicas to 0.
+
+**To Pause (Stop Pods):**
+
+```bash
+kubectl scale deployment headlamp --replicas=0 -n headlamp
+```
+
+**To Resume (Start Pods):**
+
+```bash
+kubectl scale deployment headlamp --replicas=1 -n headlamp
+```
+
+*Note: Since Headlamp is a web application, scaling back to 1 replica will restart the application and it will continue to function normally.*
+
+**IMPORTANT:** When Headlamp restarts, it should continue to function normally without any additional steps required. The web interface and configurations will remain intact.

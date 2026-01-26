@@ -1,19 +1,34 @@
 # External Secrets Operator Helm Chart
 
-This is a wrapper Helm chart for External Secrets Operator with HashiCorp Vault integration for OpenShift.
+This is a wrapper Helm chart for External Secrets Operator with HashiCorp Vault integration, pre-configured for OpenShift and standard Kubernetes environments.
 
-This chart deploys the External Secrets Operator and configures a `ClusterSecretStore` for HashiCorp Vault integration. It allows you to sync secrets from Vault into Kubernetes/OpenShift secrets across any namespace.
-
-> **Note**: Using a ClusterSecretStore is not recommended for production if you are running a multi-tenant cluster. It is better to use a namespace-scoped SecretStore. We are using a ClusterSecretStore here for demo purposes only, as it means users with access to create ExternalSecrets in any namespace can access all secrets from Vault.
+> [!NOTE]
+> **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
+>
+> 1. [Cert-Manager](../cert-manager/README.md)
+> 2. [Headlamp](../headlamp/README.md) (Optional for OpenShift)
+> 3. [HashiCorp Vault](../hashicorp-vault/README.md)
+> 4. **External Secrets** (Current)
 
 ## Overview
 
-This guide is divided into two phases to ensure proper dependency management (specifically, the ServiceAccount must exist before Vault configuration):
+This chart deploys the External Secrets Operator and configures a `ClusterSecretStore` for HashiCorp Vault integration. It allows you to sync secrets from Vault into Kubernetes/OpenShift secrets across any namespace.
 
-1. **Phase 1: Installation** - Installing the External Secrets Operator (Controller & CRDs)
-2. **Phase 2: Integration** - Configuring the connection to HashiCorp Vault
+> [!WARNING]
+> Using a `ClusterSecretStore` is not recommended for production in multi-tenant clusters. For production, consider namespace-scoped `SecretStore` resources. We use `ClusterSecretStore` here for demo simplicity.
 
----
+## Prerequisites
+
+- Kubernetes Cluster (OpenShift or Standard).
+- Helm 3+ installed.
+- [HashiCorp Vault](../hashicorp-vault/README.md) installed and unsealed.
+
+## Deployment Phases
+
+This guide is divided into two phases to ensure proper dependency management:
+
+1. **Phase 1: Installation** - Installing the External Secrets Operator (Controller & CRDs).
+2. **Phase 2: Integration** - Configuring the connection to HashiCorp Vault.
 
 ## Phase 1: Installation
 
@@ -38,7 +53,7 @@ helm dependency update .
 
 The `external-secrets.installCRDs` setting in values.yaml controls how Custom Resource Definitions are managed:
 
-#### Option 1: Helm-Managed CRDs (Default)
+### Option 1: Helm-Managed CRDs (Default)
 
 > **Note**: If you were installing the upstream chart directly, you would use:
 > `helm install external-secrets external-secrets/external-secrets --set installCRDs=true`
@@ -90,7 +105,7 @@ helm upgrade external-secrets . -n external-secrets
 helm uninstall external-secrets -n external-secrets
 ```
 
-#### Option 2: Manual CRD Management (Recommended for Production)
+### Option 2: Manual CRD Management (Recommended for Production)
 
 Set the below property in values.yaml:
 
@@ -385,7 +400,7 @@ If the status shows `InvalidProviderConfig`, check the troubleshooting section b
 
 ---
 
-## Testing Verification
+## Verification (Test Workflow)
 
 To verify the integration between External Secrets Operator and HashiCorp Vault, perform a manual test using a temporary secret.
 
@@ -544,7 +559,7 @@ oc exec -ti vault-0 -n vault -- vault read auth/kubernetes/config
 
 ---
 
-## Complete Cleanup
+## Cleanup
 
 To completely remove the External Secrets integration and all related resources:
 
@@ -599,5 +614,28 @@ kubectl delete -f https://raw.githubusercontent.com/external-secrets/external-se
 
 > [!NOTE]
 > After cleanup, if you want to redeploy:
+>
 > 1. Start fresh with Phase 1 (Installation)
 > 2. Follow Phase 2 (Integration) to reconfigure Vault
+
+## Pause & Resume Development
+
+To "turn off" the External Secrets Operator application without deleting configuration or data, you can scale the replicas to 0.
+
+**To Pause (Stop Pods):**
+
+```bash
+oc scale deployment external-secrets --replicas=0 -n external-secrets
+```
+
+**To Resume (Start Pods):**
+
+```bash
+oc scale deployment external-secrets --replicas=1 -n external-secrets
+```
+
+*Note: Since External Secrets is a controller, scaling back to 1 replica will restart the controller and it will continue to function normally.*
+
+**IMPORTANT:** When External Secrets restarts, it should continue to function normally without any additional steps required. The configurations and secret sync will remain intact.
+
+The operator will continue to monitor for ExternalSecret resources and will resume syncing when the pods are restarted. No reinitialization or reconfiguration is needed.

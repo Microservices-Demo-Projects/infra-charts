@@ -1,18 +1,29 @@
 # HashiCorp Vault on OpenShift
 
-This chart is a wrapper around the official `hashicorp/vault` chart, pre-configured with:
+This chart is a wrapper around the official [`hashicorp/vault`](https://artifacthub.io/packages/helm/hashicorp/vault) chart, pre-configured for OpenShift and standard Kubernetes environments.
 
-- `global.openshift: true` enabled.
-- **Standalone Mode** enabled (HA disabled) for simpler local development.
+> [!NOTE]
+> **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
+>
+> 1. [Cert-Manager](../cert-manager/README.md)
+> 2. [Headlamp](../headlamp/README.md) (Optional for OpenShift)
+> 3. **HashiCorp Vault** (Current)
+> 4. [External Secrets](../external-secrets/README.md)
+
+## Overview
+
+This deployment includes:
+- `global.openshift: true` enabled by default.
+- **Standalone Mode** (HA disabled) for simpler development.
 - Persistent Storage enabled (5Gi).
 - OpenShift Route enabled for UI access.
 
 ## Prerequisites
 
-- Kubernetes Cluster (OpenShift or Standard)
-- Helm 3+ installed
-- **cert-manager** installed and running
-- **ClusterIssuer** named `demo-ca` (used to issue the Vault certificate)
+- Kubernetes Cluster (OpenShift or Standard).
+- Helm 3+ installed.
+- [Cert-Manager](../cert-manager/README.md) installed.
+- **ClusterIssuer** named `demo-ca` (used for Vault TLS).
 
 ## Platform Configuration
 
@@ -34,13 +45,11 @@ To deploy on standard Kubernetes, update `values.yaml` or pass flags:
 
 - `vault.global.openshift: false`
 - `vault.server.route.enabled: false`
-- `vault.server.ingress.enabled: false` (Ingress disabled - use port-forwarding for local access)
+- `vault.server.ingress.enabled: false` (Use port-forwarding for access)
 
-**Note:** When deploying on standard Kubernetes, we use the official `hashicorp/vault` image instead of the Red Hat UBI image to avoid potential security context issues that can occur in standard Kubernetes clusters.
+**Note:** For standard Kubernetes, we use the official `hashicorp/vault` image instead of the Red Hat UBI image to avoid potential security context issues that can occur in standard Kubernetes clusters.
 
 #### Accessing Vault UI In Standard Kubernetes
-
-For standard Kubernetes, you can access Vault UI using port-forwarding:
 
 ```bash
 kubectl port-forward svc/vault-ui 8200:8200 -n vault
@@ -48,60 +57,35 @@ kubectl port-forward svc/vault-ui 8200:8200 -n vault
 
 Then access `https://127.0.0.1:8200` in your browser.
 
-This approach keeps the deployment simple and avoids complex ingress configurations.
+## Installation
 
-## Quick Start for New Clones
-
-1. **Enter the chart directory:**
-
-   ```bash
-   cd infra-charts/hashicorp-vault
-   ```
-
-2. **Add the dependency repository:**
-
-   ```bash
-   helm repo add hashicorp https://helm.releases.hashicorp.com
-   helm repo update
-   ```
-
-3. **Download specific chart dependencies:**
-
-   ```bash
-   helm dependency update .
-   ```
-
-## Lifecycle Commands
-
-### 1. Verification
-
-Before deploying, check the chart for syntax errors and validate the templates.
+### 1. Setup
 
 ```bash
-# Lint the chart
-helm lint .
+# Add repository
+helm repo add hashicorp https://helm.releases.hashicorp.com
+helm repo update
 
-# Perform a dry-run to see generated manifests
-
-## Option-1: For OpenShift
-helm install vault . --dry-run --debug --namespace vault --create-namespace
-## Option-2: For Standard Kubernetes
-helm install vault . --dry-run --debug --namespace vault --create-namespace --set global.openshift=false --set vault.server.route.enabled=false --set vault.server.ingress.enabled=false --set vault.server.image.repository=hashicorp/vault --set vault.server.image.tag=1.21.2
+# Download dependencies
+helm dependency update .
 ```
 
-### 2. Deployment
-
-Deploy the chart to the `vault` namespace.
+### 2. Deploy
 
 ```bash
 ## Option-1: For OpenShift
 helm upgrade --install vault . --namespace vault --create-namespace
 
 ## Option-2: For Standard Kubernetes
-helm upgrade --install vault . --namespace vault --create-namespace --set global.openshift=false --set vault.server.route.enabled=false --set vault.server.ingress.enabled=false --set vault.server.image.repository=hashicorp/vault --set vault.server.image.tag=1.21.2
+helm upgrade --install vault . --namespace vault --create-namespace \
+  --set global.openshift=false \
+  --set vault.server.route.enabled=false \
+  --set vault.server.ingress.enabled=false \
+  --set vault.server.image.repository=hashicorp/vault \
+  --set vault.server.image.tag=1.21.2
 ```
 
-### 3. Post-Deployment: Initialize and Unseal Vault (REQUIRED)
+## Post-Deployment: Initialize and Unseal (REQUIRED)
 
 Vault starts in a **sealed** and **uninitialized** state. The pod will NOT be "Ready" until it is initialized and unsealed.
 
@@ -137,7 +121,7 @@ Vault starts in a **sealed** and **uninitialized** state. The pod will NOT be "R
    oc get pods -n vault
    ```
 
-### 4. App Testing
+## Verification
 
 Verify the deployment is running and accessible over HTTPS.
 
@@ -156,7 +140,7 @@ kubectl get ingress -n vault
 oc exec -ti vault-0 -n vault -- vault status
 ```
 
-### 5. Configuration & Updates
+## Configuration
 
 This chart is a **wrapper** around the official [hashicorp/vault](https://artifacthub.io/packages/helm/hashicorp/vault) chart. This means you can use ANY configuration option supported by the official chart in your `values.yaml`.
 
@@ -186,7 +170,7 @@ This chart is a **wrapper** around the official [hashicorp/vault](https://artifa
 - **Storage Size**: Change `server.dataStorage.size` (Default: 5Gi).
 - **Service Type**: Change `ui.serviceType` (Default: ClusterIP).
 
-### 6. Debugging
+## Troubleshooting
 
 If things aren't working as expected:
 
@@ -201,7 +185,7 @@ oc logs vault-0 -n vault
 oc describe pod vault-0 -n vault
 ```
 
-### 7. Pause & Resume Development
+## Pause & Resume Development
 
 To "turn off" the application without deleting configuration or data (Persistent Volumes), you can scale the replicas to 0.
 
@@ -221,7 +205,7 @@ oc scale statefulset vault --replicas=1 -n vault
 
 **IMPORTANT:** When Vault restarts (after scaling up or a cluster restart), it interprets this as a "system restart" and will **seal itself**. You **MUST** run the unseal commands (Step 3.2 above) again to make it operational. You do not need to re-initialize; just unseal with your existing keys.
 
-### 8. Manual Sealing
+## Advanced Operations: Sealing
 
 You might want to manually seal the Vault if you suspect a security intrusion or want to "lock" the vault without stopping the pod.
 
@@ -247,7 +231,7 @@ oc exec -ti vault-0 -n vault -- vault operator seal
 - Lease renewals fail.
 - **Your apps will start failing immediately.**
 
-### 9. Rotating Unseal Keys (Rekeying)
+## Advanced Operations: Rekeying
 
 **Note:** You do **NOT** seal the vault to execute this. Rekeying is done while the vault is **unsealed and running**.
 
@@ -274,7 +258,7 @@ oc exec -ti vault-0 -n vault -- vault operator seal
 3. **Get New Keys:**
     After the threshold is met, the **NEW** keys will be printed. **Save them immediately!** The old keys are now invalid.
 
-### 10. Cleanup (Uninstall)
+## Cleanup
 
 To remove the deployment completely:
 

@@ -1,0 +1,22 @@
+# Configure Headlamp to serve HTTPS directly
+config:
+  tlsCertPath: "/headlamp-cert/tls.crt"
+  tlsKeyPath: "/headlamp-cert/tls.key"
+
+# Mount the certificate secret
+# Key names must match upstream chart: 'volumes' and 'volumeMounts'
+volumes:
+  - name: headlamp-cert
+    secret:
+      secretName: headlamp-tls
+
+volumeMounts:
+  - name: headlamp-cert
+    mountPath: "/headlamp-cert"
+    readOnly: true
+
+# Ensure the service maps correct ports
+service:
+  type: ClusterIP
+  port: 443
+  targetPort: 4466

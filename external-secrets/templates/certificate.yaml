@@ -1,0 +1,41 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: external-secrets-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: external-secrets-tls
+  duration: 2160h # 90 days
+  renewBefore: 720h # 30 days - renew early
+  privateKey:
+    algorithm: RSA
+    size: 4096
+    rotationPolicy: Always
+  subject:
+    organizationalUnits:
+    - "External Secrets"
+    organizations:
+    - "Demo Apps"
+    countries:
+    - "CA"
+  commonName: "external-secrets.external-secrets.svc"
+  dnsNames:
+  - external-secrets
+  - external-secrets.{{ .Release.Namespace }}
+  - external-secrets.{{ .Release.Namespace }}.svc
+  - external-secrets.{{ .Release.Namespace }}.svc.cluster.local
+  - vault.vault.svc.cluster.local  # Also include Vault's DNS for client cert
+  ipAddresses:
+  - 127.0.0.1
+  usages:
+    - digital signature
+    - key encipherment
+    - client auth  # Important for mTLS
+  issuerRef:
+    name: demo-ca
+    kind: ClusterIssuer
+    group: cert-manager.io
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: external-secrets
+      app.kubernetes.io/component: tls

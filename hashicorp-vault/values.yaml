@@ -37,7 +37,10 @@ vault:
           cluster_address = "0.0.0.0:8201"
           tls_cert_file = "/vault/userconfig/vault-tls/tls.crt"
           tls_key_file = "/vault/userconfig/vault-tls/tls.key"
-          tls_client_ca_file = "/vault/userconfig/vault-tls/ca.crt" # Optional if client auth is needed
+          tls_client_ca_file = "/vault/userconfig/vault-tls/ca.crt"
+          tls_min_version = "tls13" # Force TLS 1.3 for enhanced security
+          # Note: tls_require_and_verify_client_cert is NOT enabled to allow flexibility
+          # External Secrets will still use mTLS, but other clients can connect without client certs
         }
 
         storage "file" {

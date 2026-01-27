@@ -11,8 +11,8 @@ clusterSecretStore:
   name: local-vault-backend
   
   vault:
-    # Local HashiCorp Vault server address
-    server: "http://vault.vault.svc.cluster.local:8200"
+    # Local HashiCorp Vault server address configured with mTLS.
+    server: "https://vault.vault.svc.cluster.local:8200"
     
     # Kubernetes authentication method configuration
     auth:

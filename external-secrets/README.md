@@ -12,7 +12,7 @@ This is a wrapper Helm chart for External Secrets Operator with HashiCorp Vault 
 
 ## Overview
 
-This chart deploys the External Secrets Operator and configures a `ClusterSecretStore` for HashiCorp Vault integration. It allows you to sync secrets from Vault into Kubernetes/OpenShift secrets across any namespace.
+This chart deploys the External Secrets Operator and configures a `ClusterSecretStore` for HashiCorp Vault integration with mTLS security. It allows you to sync secrets from Vault into Kubernetes/OpenShift secrets across any namespace.
 
 > [!WARNING]
 > Using a `ClusterSecretStore` is not recommended for production in multi-tenant clusters. For production, consider namespace-scoped `SecretStore` resources. We use `ClusterSecretStore` here for demo simplicity.
@@ -85,7 +85,14 @@ helm install external-secrets . -n external-secrets --create-namespace
 
 # Verify pods are running
 oc get pods -n external-secrets
+
+# Verify TLS certificate is created (for mTLS with Vault)
+oc get certificate external-secrets-tls -n external-secrets
+# STATUS should show "Ready: True"
 ```
+
+> [!NOTE]
+> **TLS Certificate**: A TLS certificate (`external-secrets-tls`) is automatically created by cert-manager using the `demo-ca` ClusterIssuer. This certificate is used for secure mTLS communication with Vault and will auto-renew before expiration date.
 
 **Upgrade:**
 
@@ -364,6 +371,12 @@ oc exec -ti vault-0 -n vault -- vault read auth/kubernetes/role/external-secrets
 
 Now that Vault is ready, we update the Helm release to create the `ClusterSecretStore` resource.
 
+> [!NOTE]
+> **TLS Configuration**: The ClusterSecretStore is pre-configured to use secure mTLS communication with Vault:
+> - **HTTPS** connection (`https://vault.vault.svc.cluster.local:8200`)
+> - **mTLS** with client certificate authentication
+> - **CA validation** using the `external-secrets-tls` certificate created in Phase 1
+
 #### Option A: Command Line Flag Override
 
 ```bash
@@ -555,6 +568,52 @@ oc exec -ti vault-0 -n vault -- sh -c 'vault write auth/kubernetes/config \
 # Verify the configuration
 oc exec -ti vault-0 -n vault -- vault read auth/kubernetes/config
 # Check that kubernetes_ca_cert is populated (not "n/a")
+```
+
+### TLS Certificate Issues
+
+**Symptoms:**
+```
+Error: x509: certificate signed by unknown authority
+Error: tls: failed to verify certificate
+```
+
+**Common Causes:**
+
+1. **Certificate not created**: The `external-secrets-tls` certificate wasn't created by cert-manager
+2. **Certificate not ready**: Certificate is still being issued
+3. **Wrong CA certificate**: Certificate chain doesn't match
+
+**Debug:**
+```bash
+# Check certificate status
+oc get certificate external-secrets-tls -n external-secrets
+oc describe certificate external-secrets-tls -n external-secrets
+
+# Verify the secret exists and has correct keys
+oc get secret external-secrets-tls -n external-secrets -o yaml
+# Should contain: ca.crt, tls.crt, tls.key
+
+# Check cert-manager logs if certificate isn't ready
+oc logs -n cert-manager -l app.kubernetes.io/name=cert-manager --tail=50
+
+# Verify demo-ca ClusterIssuer exists
+oc get clusterissuer demo-ca
+```
+
+**Solution:**
+
+If the certificate is missing or invalid, you can trigger recreation:
+
+```bash
+# Delete the certificate (it will be recreated on next helm upgrade)
+oc delete certificate external-secrets-tls -n external-secrets
+
+# Trigger recreation
+helm upgrade external-secrets . -n external-secrets
+
+# Wait for certificate to be ready
+oc wait --for=condition=ready certificate/external-secrets-tls -n external-secrets --timeout=120s
 ```
 
 ---

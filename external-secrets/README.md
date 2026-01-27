@@ -1,6 +1,6 @@
 # External Secrets Operator Wrapper Chart
 
-This is a wrapper Helm chart for External Secrets Operator with HashiCorp Vault integration, pre-configured for OpenShift and standard Kubernetes environments.
+This is a wrapper Helm chart for External Secrets Operator with HashiCorp Vault integration, pre-configured for OpenShift and standard Kubernetes.
 
 > [!NOTE]
 > **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
@@ -12,7 +12,7 @@ This is a wrapper Helm chart for External Secrets Operator with HashiCorp Vault 
 
 ## Overview
 
-This chart deploys the External Secrets Operator and configures a `ClusterSecretStore` for HashiCorp Vault integration with mTLS security. It allows you to sync secrets from Vault into Kubernetes/OpenShift secrets across any namespace.
+This chart deploys the External Secrets Operator (ESO) and configures a `ClusterSecretStore` for secure mTLS integration with HashiCorp Vault. It allows you to sync secrets from Vault into Kubernetes/OpenShift secrets across any namespace.
 
 > [!WARNING]
 > Using a `ClusterSecretStore` is not recommended for production in multi-tenant clusters. For production, consider namespace-scoped `SecretStore` resources. We use `ClusterSecretStore` here for demo simplicity.
@@ -32,9 +32,9 @@ This guide is divided into two phases to ensure proper dependency management:
 
 ## Phase 1: Installation
 
-In this phase, we install the operator and its CRDs. By default, the `ClusterSecretStore` integration is **disabled** (`clusterSecretStore.required: false`) to allow the ServiceAccount to be created first.
+Install the operator and its CRDs. The `ClusterSecretStore` integration is **disabled** (values.yaml has `clusterSecretStore.required: false`)by default to allow the ServiceAccount to be created first.
 
-### Setup
+### 1. Setup
 
 Enter the chart directory and download dependencies.
 
@@ -239,17 +239,19 @@ oc exec -ti vault-0 -n vault -- /bin/sh -c 'vault secrets list | grep -q "^kv/" 
 # The policy controls what secrets the External Secrets Operator can access.
 # Choose one of the examples below based on your requirements and secret engine types:
 
-# Example 1: KV Version 2 Secret Engine (Default - Recommended for Production)
-# KV v2 stores data at 'path/data/*' and metadata at 'path/metadata/*'
-# This is the most common secret engine for static key-value secrets
-echo 'path "kv/data/*" {
-  capabilities = ["read"]
+# Example 1: All Secret Engines (Recommended for POC/Development)
+# This grants read access to ALL secrets in Vault. It is the simplest way to get
+# started and works with any secret engine (KV v1, KV v2, Database, etc.)
+echo 'path "*" {
+  capabilities = ["read", "list"]
 }' | oc exec -i vault-0 -n vault -- vault policy write external-secrets-readonly-policy -
 
-# Example 2: All Secret Engines (POC/Development Only)
-# WARNING: This grants read access to ALL secrets in Vault - use only for POC/testing!
-# This is useful when you want to quickly test without worrying about specific paths
-echo 'path "*" {
+# Example 2: KV Secret Engine (Supports both v1 (kv/*) and v2 (kv/data/*))
+# This policy is more inclusive and works for both engine versions.
+echo 'path "kv/*" {
+  capabilities = ["read", "list"]
+}
+path "kv/data/*" {
   capabilities = ["read", "list"]
 }' | oc exec -i vault-0 -n vault -- vault policy write external-secrets-readonly-policy -
 
@@ -258,20 +260,20 @@ echo 'path "*" {
 # Useful when your application needs various types of secrets
 echo '# KV v2 for static application secrets
 path "kv/data/app/*" {
-  capabilities = ["read"]
+  capabilities = ["read", "list"]
 }
 
 # Database engine for dynamic database credentials
 path "database/creds/postgres-readonly" {
-  capabilities = ["read"]
+  capabilities = ["read", "list"]
 }
 path "database/creds/mysql-app" {
-  capabilities = ["read"]
+  capabilities = ["read", "list"]
 }
 
 # AWS engine for dynamic AWS credentials
 path "aws/creds/s3-readonly" {
-  capabilities = ["read"]
+  capabilities = ["read", "list"]
 }
 
 # PKI for certificate issuance
@@ -376,6 +378,11 @@ Now that Vault is ready, we update the Helm release to create the `ClusterSecret
 > - **HTTPS** connection (`https://vault.vault.svc.cluster.local:8200`)
 > - **mTLS** with client certificate authentication
 > - **CA validation** using the `external-secrets-tls` certificate created in Phase 1
+>
+> **Note on Secret Paths (Generic Store)**: This `ClusterSecretStore` is generic and does not specify a fixed mount path or version.
+> - **Default Version**: If `version` is omitted, the operator defaults to **`v2`**.
+> - **V2 Behavior**: The operator assumes the mount point is `secret/` and automatically injects `/data/`. To access a secret at `kv/test-secret`, you would need to use `key: kv/test-secret` and the operator will look at `secret/data/kv/test-secret`. **This is usually not what you want for a generic store.**
+> - **Recommended (V1)**: To have full control and support any secret engine, this chart explicitly sets `version: v1` by default. In `v1` mode, the operator uses the exact path you provide in the `ExternalSecret`.
 
 #### Option A: Command Line Flag Override
 

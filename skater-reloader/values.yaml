@@ -9,9 +9,13 @@ stakater-reloader:
     # Enable OpenShift-specific features
     # For standard Kubernetes, set this to false
     isOpenshift: true
+    readOnlyRootFileSystem: true
   
   deployment:
     # OpenShift-specific security context
     # Let OpenShift SCC assign UID dynamically
     securityContext:
       runAsUser: null
+      # runAsUser: 65534 # Default Nobody User Id
+    containerSecurityContext:
+      readOnlyRootFilesystem: true

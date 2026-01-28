@@ -11,12 +11,12 @@ This chart is a wrapper around the official [`stakater/reloader`](https://github
 > 4. [External Secrets](../external-secrets/README.md)  
 > 5. **Stakater Reloader** (Current)
 
----
-
 ## Overview
 
 Reloader automatically triggers rolling upgrades of workloads when referenced **ConfigMaps** or **Secrets** change.  
+
 This is especially useful when using:
+
 - External Secrets syncing from Vault  
 - ConfigMaps changed during CI/CD  
 - TLS certificates rotated automatically by cert-manager
@@ -63,7 +63,7 @@ helm repo update
 helm dependency update .
 ```
 
-### 2. Deploy (OpenShift default)
+### 2. Deploy
 
 ```bash
 helm upgrade --install reloader . \
@@ -78,14 +78,12 @@ helm upgrade --install reloader . \
 oc get pods -n reloader
 
 # View logs to verify reload events
-oc logs -n reloader -l app=reloader --tail=50
+oc logs -n reloader -l app=reloader-stakater-reloader --tail=50
 
 # Check RBAC resources
-oc get clusterrole reloader-role
-oc get clusterrolebinding reloader-role-binding
+oc get clusterrole reloader-stakater-reloader-role
+oc get clusterrolebinding reloader-stakater-reloader-role-binding
 ```
-
----
 
 ## Usage
 
@@ -115,7 +113,6 @@ metadata:
 Reloader also supports more advanced reload mechanisms beyond basic annotations.
 
 For deeper or more complex reload patterns, refer to the official Stakater Reloader documentation <https://github.com/stakater/Reloader/tree/master>
-
 
 ## Verification (Test Workflow)
 
@@ -201,7 +198,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: busybox
+        image: docker.io/library/busybox:1.37.0
         command:
         - /bin/sh
         - -c
@@ -235,6 +232,8 @@ EOF
 
 ```bash
 oc get pods -n test-reloader-demo
+
+oc get events -n test-reloader-demo
 ```
 
 ### 7. View Logs (Observe Initial Values)
@@ -245,7 +244,7 @@ oc logs -n test-reloader-demo -l app=reloader-test-app -f
 
 You should see:
 
-```
+```text
 Config MESSAGE=Hello from config v1
 Secret USERNAME=admin
 Secret PASSWORD=initial123
@@ -273,7 +272,7 @@ oc get pods -n test-reloader-demo -w
 Pods will rotate automatically.  
 Logs will now show:
 
-```
+```text
 Config MESSAGE=Hello from config v2
 Secret USERNAME=admin2
 Secret PASSWORD=changed456
@@ -285,7 +284,6 @@ Secret PASSWORD=changed456
 oc delete namespace test-reloader-demo
 oc exec -ti vault-0 -n vault -- vault kv delete kv/demo-secret
 ```
-
 
 ## Configuration
 
@@ -304,8 +302,6 @@ Update your local `values.yaml` and then:
 helm upgrade reloader . -n reloader
 ```
 
----
-
 ## Debugging
 
 ```bash
@@ -320,11 +316,10 @@ oc logs -n reloader -l app=reloader --tail=100
 ```
 
 If workloads are not reloading:
+
 1. Ensure annotations are correct  
 2. Ensure Reloader has RBAC access  
 3. Check for errors in logs  
-
----
 
 ## Cleanup (Uninstall)
 
@@ -338,23 +333,21 @@ helm uninstall reloader --namespace reloader
 oc delete namespace reloader
 ```
 
----
-
 ## Pause & Resume Development
 
 To temporarily disable reloader without uninstalling:
 
 **Pause:**
+
 ```bash
 oc scale deployment reloader --replicas=0 -n reloader
 ```
 
 **Resume:**
+
 ```bash
 oc scale deployment reloader --replicas=1 -n reloader
 ```
-
----
 
 ## Next Steps
 

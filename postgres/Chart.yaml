@@ -1,0 +1,11 @@
+apiVersion: v2
+name: postgres
+description: Wrapper chart for the Bitnami PostgreSQL Helm chart.
+type: application
+version: 0.1.0
+appVersion: "18.2.3"
+
+dependencies:
+  - name: postgresql
+    version: 18.2.3
+    repository: https://charts.bitnami.com/bitnami

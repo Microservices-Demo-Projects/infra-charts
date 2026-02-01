@@ -228,4 +228,4 @@ kubectl scale deployment headlamp --replicas=1 -n headlamp
 
 *Note: Since Headlamp is a web application, scaling back to 1 replica will restart the application and it will continue to function normally.*
 
-**IMPORTANT:** When Headlamp restarts, it should continue to function normally without any additional steps required. The web interface and configurations will remain intact.
+**IMPORTANT:** When Headlamp restarts, it continues to function normally without any additional steps required. The web interface and configurations remain intact.

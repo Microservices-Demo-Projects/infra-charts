@@ -60,7 +60,7 @@ vault:
         termination: PASSTHROUGH # Use PASSTHROUGH for end-to-end TLS
 
     # Security Context Constraints (SCC) are handled by the chart with global.openshift: true
-    # but we might need to ensure the service account has permissions.
+    # but we must ensure the service account has permissions.
     # The official chart handles SCC binding if global.openshift is true.
 
   injector:

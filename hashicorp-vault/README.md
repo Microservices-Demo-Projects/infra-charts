@@ -1,60 +1,58 @@
 # HashiCorp Vault Wrapper Chart
 
-This chart is a wrapper around the official [`hashicorp/vault`](https://artifacthub.io/packages/helm/hashicorp/vault) chart, pre-configured for OpenShift and standard Kubernetes environments.
+This chart is a wrapper around the official [`hashicorp/vault`](https://artifacthub.io/packages/helm/hashicorp/vault) chart, configured for OpenShift and standard Kubernetes environments.
 
 > [!NOTE]
 > **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
 >
 > 1. [Cert-Manager](../cert-manager/README.md)
-> 2. [Headlamp](../headlamp/README.md) (Optional for OpenShift)
+> 2. [Headlamp](../headlamp/README.md) (Optional for Standard Kubernetes, and not needed for OpenShift)
 > 3. **HashiCorp Vault** (Current)
 > 4. [External Secrets](../external-secrets/README.md)
+> 5. [PostgreSQL](../postgres/README.md)
+
+> [!WARNING]
+> While following the below instructions, use the appropriate `kubectl` commands instead of `oc` if you are not in an OpenShift environment.
 
 ## Overview
 
 This deployment includes:
-- `global.openshift: true` enabled by default.
-- **Standalone Mode** (HA disabled) for simpler development.
-- Persistent Storage enabled (5Gi).
-- OpenShift Route enabled for UI access.
+- **OpenShift Optimized**: `global.openshift: true` enabled by default.
+- **Standalone Mode**: (HA disabled) for simpler development and testing.
+- **Persistent Storage**: Enabled (5Gi).
+- **OpenShift Route**: Enabled for UI access.
+- **Secure by Default**: TLS enabled via cert-manager.
 
 ## Prerequisites
 
 - Kubernetes Cluster (OpenShift or Standard).
 - Helm 3+ installed.
-- [Cert-Manager](../cert-manager/README.md) installed.
-- **ClusterIssuer** named `demo-ca` (used for Vault TLS).
+- [Cert-Manager](../cert-manager/README.md) installed with `demo-ca` ClusterIssuer.
 
 ## Platform Configuration
 
 ### OpenShift (Default)
 
 By default, this chart is configured for OpenShift:
-
 - `global.openshift: true`
 - `server.route.enabled: true`
 - `server.ingress.enabled: false`
 
-#### Accessing Vault UI In OpenShift
-
-Vault UI will be accessible via the automatically created OpenShift Route.
+Vault UI is accessible via the automatically created OpenShift Route.
 
 ### Standard Kubernetes
 
 To deploy on standard Kubernetes, update `values.yaml` or pass flags:
-
 - `vault.global.openshift: false`
 - `vault.server.route.enabled: false`
-- `vault.server.ingress.enabled: false` (Use port-forwarding for access)
+- `vault.server.ingress.enabled: false`
+- `vault.server.image.repository: hashicorp/vault`
+- `vault.server.image.tag: 1.21.2`
 
-**Note:** For standard Kubernetes, we use the official `hashicorp/vault` image instead of the Red Hat UBI image to avoid potential security context issues that can occur in standard Kubernetes clusters.
-
-#### Accessing Vault UI In Standard Kubernetes
-
+Access Vault UI via port-forwarding:
 ```bash
 kubectl port-forward svc/vault-ui 8200:8200 -n vault
 ```
-
 Then access `https://127.0.0.1:8200` in your browser.
 
 ## Installation
@@ -87,102 +85,96 @@ helm upgrade --install vault . --namespace vault --create-namespace \
 
 ## Post-Deployment: Initialize and Unseal (REQUIRED)
 
-Vault starts in a **sealed** and **uninitialized** state. The pod will NOT be "Ready" until it is initialized and unsealed.
+Vault starts in a **sealed** and **uninitialized** state. The pod stays in non-ready state until it is initialized and unsealed.
 
-1. **Verify TLS Certificate Creation:**
-   Wait for cert-manager to issue the certificate.
-
+1. **Verify TLS Certificate Creation**:
    ```bash
-   oc get certificate -n vault
+   oc get certificate vault-tls -n vault
    oc get secret vault-tls -n vault
    ```
 
-2. **Initialize Vault:**
-
+2. **Initialize Vault**:
    ```bash
-   oc get pods -n vault
-   
    oc exec -ti vault-0 -n vault -- vault operator init
    ```
+   **IMPORTANT**: Save the "Unseal Keys" and "Initial Root Token" immediately.
 
-   **IMPORTANT:** Save the "Unseal Keys" and "Initial Root Token" immediately! You will need them for the next step.
-
-3. **Unseal Vault:**
-   Run this command 3 times (or however many your threshold is), providing a different Unseal Key each time:
-
+3. **Unseal Vault**:
+   Run this command 3 times, providing a different Unseal Key each time:
    ```bash
    oc exec -ti vault-0 -n vault -- vault operator unseal
    ```
 
-4. **Verify:**
-   After unsealing, the pod should become Ready.
-
-   ```bash
-   oc get pods -n vault
-   ```
-
 ## Verification
 
-Verify the deployment is running and accessible over HTTPS.
+### 1. Check Pod Status
+```bash
+oc get pods -n vault
+```
+
+### 2. Verify Route (OpenShift)
+```bash
+oc get route vault -n vault
+```
+
+### 3. Check Vault Status
+```bash
+oc exec -ti vault-0 -n vault -- vault status
+```
+
+---
+
+## Verification (Test Workflow)
+
+Test Vault integration by creating and retrieving a static secret.
 
 ```bash
-# Check Pod status
-oc get pods -n vault
+# 1. Login to Vault
+oc exec -ti vault-0 -n vault -- vault login
+# (Enter Root Token)
 
-# Check the Route (URL) for OpenShift
-oc get route -n vault
-# Check the Ingress (URL) for Standard Kubernetes
-kubectl get ingress -n vault
-# Note: For standard Kubernetes, you access Vault via the Ingress host (e.g., https://valut-demo.local).
-# Ensure your /etc/hosts or DNS resolves this domain to your Ingress Controller IP.
+# 2. Enable KV Engine
+oc exec -ti vault-0 -n vault -- vault auth enable kubernetes
+oc exec -ti vault-0 -n vault -- vault secrets enable -path=kv kv
 
-# Check Vault Status (inside the pod, using the configured CA)
-oc exec -ti vault-0 -n vault -- vault status
+# 3. Put and Get Secret
+oc exec -ti vault-0 -n vault -- vault kv put kv/test-secret message="Hello Vault"
+oc exec -ti vault-0 -n vault -- vault kv get kv/test-secret
 ```
 
 ## Configuration
 
-This chart is a **wrapper** around the official [hashicorp/vault](https://artifacthub.io/packages/helm/hashicorp/vault) chart. This means you can use ANY configuration option supported by the official chart in your `values.yaml`.
+> [!NOTE]
+> **Subchart Nesting**: All configurations must be nested under the `vault:` key in `values.yaml`.
 
-#### **How to Customize**
+Example:
+```yaml
+vault:
+  server:
+    dataStorage:
+      size: 10Gi
+```
 
-1. **Check Official Docs**: Visit the [Vault Helm Configuration Page](https://developer.hashicorp.com/vault/docs/platform/k8s/helm/configuration) to see all available options (e.g., resource limits, ingress settings, audit logs).
-2. **Edit `values.yaml`**: Add the settings you need under the `server` (or other) sections.
-    - *Example: Changing Resource Limits*
+Refer to the [Official Vault Helm Configuration](https://developer.hashicorp.com/vault/docs/platform/k8s/helm/configuration) for all available parameters.
 
-        ```yaml
-        server:
-           resources:
-             requests:
-               memory: "512Mi"
-               cpu: "500m"
-        ```
-
-3. **Apply Changes**:
-
-    ```bash
-    helm upgrade vault . --namespace vault
-    ```
-
-#### **Common Configurations**
-
-- **Image Tag**: Change `server.image.tag` to upgrade Vault versions.
-- **Storage Size**: Change `server.dataStorage.size` (Default: 5Gi).
-- **Service Type**: Change `ui.serviceType` (Default: ClusterIP).
-
-## Troubleshooting
-
-If things aren't working as expected:
+## Troubleshooting / Debugging
 
 ```bash
-# Get events in the namespace
+# Get events
 oc get events -n vault --sort-by='.lastTimestamp'
 
-# Check logs of the vault-0 pod
+# Check logs
 oc logs vault-0 -n vault
 
-# Describe the pod to see failure reasons (like scheduling issues or image pull errors)
+# Describe pod
 oc describe pod vault-0 -n vault
+```
+
+## Cleanup
+
+```bash
+helm uninstall vault --namespace vault
+oc delete project vault
 ```
 
 ## Pause & Resume Development
@@ -190,20 +182,18 @@ oc describe pod vault-0 -n vault
 To "turn off" the application without deleting configuration or data (Persistent Volumes), you can scale the replicas to 0.
 
 **To Pause (Stop Pods):**
-
 ```bash
 oc scale statefulset vault --replicas=0 -n vault
 ```
 
 **To Resume (Start Pods):**
-
 ```bash
 oc scale statefulset vault --replicas=1 -n vault
 ```
+**IMPORTANT**: When Vault restarts, it will **seal itself**. You MUST run the unseal commands again.
 
-*Note: Since HA is disabled, we scale back to 1 replica.*
+## Additional Information
 
-**IMPORTANT:** When Vault restarts (after scaling up or a cluster restart), it interprets this as a "system restart" and will **seal itself**. You **MUST** run the unseal commands (Step 3.2 above) again to make it operational. You do not need to re-initialize; just unseal with your existing keys.
 
 ## Advanced Operations: Sealing
 
@@ -258,25 +248,3 @@ oc exec -ti vault-0 -n vault -- vault operator seal
 3. **Get New Keys:**
     After the threshold is met, the **NEW** keys will be printed. **Save them immediately!** The old keys are now invalid.
 
-## Cleanup
-
-To remove the deployment completely:
-
-```bash
-helm uninstall vault --namespace vault
-
-# Optional: Delete the namespace and PVCs (Wait for uninstall to finish first)
-oc delete project vault
-# or for standard kubernetes
-kubectl delete namespace vault
-```
-
----
-
-## Next Steps
-
-Once Vault is running and unsealed, you can integrate it with other services:
-
-- **External Secrets Operator**: Automatically sync secrets from Vault to Kubernetes Secrets
-  - See [External Secrets README](../external-secrets/README.md) for setup instructions
-  - Make sure to save your root token - you'll need it for the integration steps

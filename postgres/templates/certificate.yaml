@@ -5,11 +5,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   secretName: postgres-tls
-  commonName: postgres-postgresql
+  commonName: postgres
   dnsNames:
-    - postgres-postgresql
-    - postgres-postgresql.postgres.svc
-    - postgres-postgresql.postgres.svc.cluster.local
+    - postgres
+    - postgres.postgres.svc
+    - postgres.postgres.svc.cluster.local
   issuerRef:
     name: demo-ca
     kind: ClusterIssuer

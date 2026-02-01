@@ -242,7 +242,7 @@ oc get events -n test-reloader-demo
 oc logs -n test-reloader-demo -l app=reloader-test-app -f
 ```
 
-You should see:
+The output will show:
 
 ```text
 Config MESSAGE=Hello from config v1
@@ -351,5 +351,5 @@ oc scale deployment reloader --replicas=1 -n reloader
 
 ## Next Steps
 
-If using External Secrets, ensure secrets are synced correctly.  
-If using Vault, make sure certificates or secrets update as expected so Reloader can trigger reloads.
+Ensure secrets are synced correctly if using External Secrets.  
+Ensure certificates or secrets update as expected so Reloader can trigger reloads if using Vault.

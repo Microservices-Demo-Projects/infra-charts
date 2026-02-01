@@ -27,7 +27,7 @@ clusterSecretStore:
         role: "external-secrets"
         
         # Service account used for authentication with Vault
-        # This should be the service account created by the external-secrets chart
+        # This must be the service account created by the external-secrets chart
         # Default is "external-secrets" (the chart's default SA name)
         serviceAccountRef:
           name: "external-secrets"

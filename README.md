@@ -1,4 +1,4 @@
-# Infrastructure Charts
+# Platform Charts
 
 ## Overview
 
@@ -8,10 +8,13 @@ This repository contains infrastructure Helm charts for demo projects created in
 
 Before using these infrastructure charts, ensure you have the following:
 
-- **OpenShift Cluster**
-  - **Local Development**: Use Red Hat's CodeReady Containers (CRC) for a local OpenShift cluster. Setup instructions are provided below in the "Local OpenShift Cluster Setup" section.
-  - **Cloud/Managed Environment**: Alternatively, use a managed OpenShift service from cloud providers such as Red Hat OpenShift on AWS (ROSA), Azure Red Hat OpenShift (ARO), or OpenShift on GCP. Refer to the official documentation for cloud-specific setup.
-  - **Kubernetes Alternative**: While these charts are designed and tested for OpenShift, they can also run on standard Kubernetes clusters (such as those provided by GKE, EKS, or AKS) or a local cluster like Kind, Minikube, etc. But note that minor configuration adjustments may be required for Kubernetes deployments.
+- **Kubernetes or OpenShift Cluster**: The platform charts in this repository are designed to be deployed on either OpenShift or standard Kubernetes environments.
+  - **Local Development**:
+    - **OpenShift**: Follow the steps in the [Local OpenShift Cluster Setup](#local-openshift-cluster-setup---codeready-container) section below to configure a CRC cluster.
+    - **Standard Kubernetes**: Use a local cluster setup such as [Kind](https://kind.sigs.k8s.io/), [Minikube](https://minikube.sigs.k8s.io/), or enable the integrated Kubernetes cluster in [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+  - **Cloud Managed Environments**:
+    - Supports various managed services including AWS EKS, Google GKE, Azure AKS, ROSA, and ARO.
+    - For **AWS EKS** setup, refer to the [eks-infra-setup](https://github.com/Microservices-Demo-Projects/eks-infra-setup) repository in this organization for the Infrastructure as Code (IaC) configuration. For other cloud platforms, please follow the provider's official documentation to set up the cluster on your own.
 
 - **Helm**: Package manager for Kubernetes/OpenShift (v3.x or later recommended)
 

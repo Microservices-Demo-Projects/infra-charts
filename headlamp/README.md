@@ -63,9 +63,6 @@ helm repo update
 # Check available versions
 helm search repo headlamp/headlamp --versions
 
-# Download dependencies (if any)
-helm dependency update .
-
 # Install the chart
 helm upgrade --install headlamp headlamp/headlamp \
   --namespace headlamp \

@@ -301,8 +301,14 @@ oc exec -ti vault-0 -n vault -- vault read auth/kubernetes/role/external-secrets
 Update the Helm release to enable the `ClusterSecretStore` template creation.
 
 ```bash
+# Use the one of the below two command based on the installation approach used:
 helm upgrade external-secrets . -n external-secrets \
   --set clusterSecretStore.required=true
+
+# Or
+helm upgrade external-secrets . -n external-secrets \
+  --set clusterSecretStore.required=true \
+  --set external-secrets.installCRDs=false
 ```
 
 ## Verification

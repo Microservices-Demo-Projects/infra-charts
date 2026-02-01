@@ -7,9 +7,9 @@ spec:
   secretName: postgres-tls
   commonName: postgres
   dnsNames:
-    - postgres
-    - postgres.postgres.svc
-    - postgres.postgres.svc.cluster.local
+    - {{ .Release.Name }}-postgresql
+    - {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc
+    - {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local
   issuerRef:
     name: demo-ca
     kind: ClusterIssuer

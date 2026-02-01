@@ -27,6 +27,20 @@ This chart deploys a PostgreSQL instance with:
 - [HashiCorp Vault](../hashicorp-vault/README.md) installed and unsealed.
 - [External Secrets](../external-secrets/README.md) installed and integrated with Vault.
 
+### Vault Prerequisites (REQUIRED)
+
+The root password must be created in Vault **before** applying this chart so the ExternalSecret can sync it.
+
+```bash
+# 1. Login to Vault
+oc exec -ti vault-0 -n vault -- vault login
+# (Enter Root Token)
+
+# 2. Put secret in KV engine
+# This path 'kv/db/postgres-root' matches the default in externalsecret.yaml
+oc exec -ti vault-0 -n vault -- vault kv put kv/db/postgres-root password=myrootpassword
+```
+
 ## Platform Configuration
 
 ### OpenShift (Default)
@@ -70,8 +84,16 @@ helm dependency update .
 ### 2. Deploy
 
 ```bash
-# Install the chart
+# For OpenShift
 helm upgrade --install postgres . --namespace postgres --create-namespace
+
+# For Standard Kubernetes
+helm upgrade --install postgres . --namespace postgres --create-namespace \
+  --set postgresql.podSecurityContext.enabled=true \
+  --set postgresql.podSecurityContext.fsGroup=1001 \
+  --set postgresql.containerSecurityContext.enabled=true \
+  --set postgresql.containerSecurityContext.runAsUser=1001 \
+  --set postgresql.volumePermissions.enabled=true
 ```
 
 ## Verification
@@ -82,6 +104,8 @@ helm upgrade --install postgres . --namespace postgres --create-namespace
 oc get pods -n postgres
 
 oc logs -n postgres -f statefulset/postgres-postgresql
+
+oc events -n postgres
 ```
 
 ### 2. Verify TLS Certificate
@@ -104,17 +128,7 @@ This workflow demonstrates how to manage PostgreSQL credentials using HashiCorp 
 
 ### Phase 1: Using Vault KV Engine (Static Creds)
 
-#### 1. Create Secret in Vault
-```bash
-# Login to Vault
-oc exec -ti vault-0 -n vault -- vault login
-# (Enter Root Token)
-
-# Put secret in KV engine
-oc exec -ti vault-0 -n vault -- vault kv put kv/db/postgres-root password=myrootpassword
-```
-
-#### 2. Sync Secret with ExternalSecret
+#### 1. Sync Secret with ExternalSecret
 The chart includes a template for `postgres-root-password` ExternalSecret pointing to `kv/db/postgres-root`. Ensure it syncs:
 ```bash
 oc describe externalsecret postgres-root-password -n postgres
@@ -123,18 +137,29 @@ oc describe externalsecret postgres-root-password -n postgres
 ### Phase 2: Using Vault Database Engine (Rotating Creds)
 
 #### 1. Configure Vault Database Secrets Engine
+
+Configure the database engine (default path is `database`):
 ```bash
-# 1. Enable Database secrets engine
+# 1. Enable Database secrets engine (ignore error if already enabled)
 oc exec -ti vault-0 -n vault -- vault secrets enable database
 
-# 2. Configure connection to Postgres
-# Note: Use the internal ClusterIP service URL: postgres.postgres.svc.cluster.local
+# 2. List the secrets engines to verify
+oc exec -ti vault-0 -n vault -- vault secrets list
+
+# 3. Configure connection to Postgres
+# Note: Authenticated by client certificate (commonName: vault). 
+# Password is NOT needed because the chart enforces 'cert' authentication by default.
+# The 'vault' user is automatically created by the Postgres chart's initialization scripts.
+
+# (Optional) Retrieve root password if you ever want to switch to password auth
+# ROOT_PASS=$(oc exec vault-0 -n vault -- vault kv get -field=password kv/db/postgres-root)
+
+# Password is not needed in below command because the chart enforces 'cert' authentication by default.
 oc exec -ti vault-0 -n vault -- vault write database/config/postgresql \
     plugin_name=postgresql-database-plugin \
     allowed_roles="privileged-user" \
-    connection_url="postgresql://{{username}}:{{password}}@postgres.postgres.svc.cluster.local:5432/postgres?sslmode=verify-full&sslrootcert=/vault/userconfig/vault-tls/ca.crt" \
-    username="postgres" \
-    password="myrootpassword"
+    connection_url="postgresql://{{username}}:{{password}}@postgres-postgresql.postgres.svc.cluster.local:5432/postgres?sslmode=verify-full&sslrootcert=/vault/userconfig/vault-tls/ca.crt&sslcert=/vault/userconfig/vault-tls/tls.crt&sslkey=/vault/userconfig/vault-tls/tls.key" \
+    username="vault" # password="$ROOT_PASS"
 
 # 3. Create a rotating role
 oc exec -ti vault-0 -n vault -- vault write database/roles/privileged-user \
@@ -143,6 +168,12 @@ oc exec -ti vault-0 -n vault -- vault write database/roles/privileged-user \
     default_ttl="1h" \
     max_ttl="24h"
 ```
+
+> [!WARNING]
+> **Authentication Method Conflict**: 
+> By default, this chart requires Certificate Authentication (`cert`) for all SSL connections. 
+> However, Vault's rotating credentials (usernames/passwords generated in this Phase) do **not** have certificates. 
+> To allow applications to use these rotating credentials, you MUST eventually modify `pg_hba.conf` to allow `scram-sha-256` (password) authentication over SSL.
 
 #### 2. Create ExternalSecret for Rotating Creds
 Apply the following manifest to sync rotating credentials:
@@ -189,6 +220,34 @@ Applications within the same cluster access the database using the following det
 oc port-forward svc/postgres-postgresql 5432:5432 -n postgres
 ```
 
+#### Local GUI Client Access (DBeaver, PGAdmin, etc.)
+
+To connect using a desktop client:
+
+1.  **Port Forward**: Ensure the port-forward command above is running.
+2.  **Retrieve Credentials**:
+    ```bash
+    # For Static Root Password:
+    oc get secret postgres-root-password -n postgres -o jsonpath='{.data.password}' | base64 -d
+    
+    # For Rotating Credentials:
+    oc get secret postgres-rotating-creds -n postgres -o jsonpath='{.data.username}' | base64 -d
+    oc get secret postgres-rotating-creds -n postgres -o jsonpath='{.data.password}' | base64 -d
+    ```
+3.  **Connection Settings**:
+    - **Host**: `localhost`
+    - **Port**: `5432`
+    - **Database**: `postgres`
+    - **Authentication**: Use the retrieved Username and Password.
+4.  **SSL/TLS Configuration**:
+    - Since TLS is enabled, you must configure SSL in your client.
+    - **SSL Mode**: `verify-full` or `require`.
+    - **Root Certificate**: Extract the CA certificate from the `postgres-tls` secret:
+      ```bash
+      oc get secret postgres-tls -n postgres -o jsonpath='{.data.ca\.crt}' | base64 -d > ca.crt
+      ```
+    - Provide this `ca.crt` as the **Root Certificate / CA Certificate** in your client's SSL settings.
+
 **Option B: OpenShift Route (If configured)**
 *Note: Postgres requires SNI for Route-based access if using PASSTHROUGH TLS. Port-forward is required for database access.*
 
@@ -196,12 +255,19 @@ oc port-forward svc/postgres-postgresql 5432:5432 -n postgres
 Use the credentials synced from Vault:
 
 ```bash
-# Get credentials from the synced secret
+# 1. Port forward (in another terminal)
+oc port-forward svc/postgres-postgresql 5432:5432 -n postgres
+
+# 2. Get credentials
 DB_USER=$(oc get secret postgres-rotating-creds -n postgres -o jsonpath='{.data.username}' | base64 -d)
 DB_PASS=$(oc get secret postgres-rotating-creds -n postgres -o jsonpath='{.data.password}' | base64 -d)
+# Extract CA for verification
+oc get secret postgres-tls -n postgres -o jsonpath='{.data.ca\.crt}' | base64 -d > ca.crt
 
-# Connect using psql (requires local psql client)
-PGPASSWORD=$DB_PASS psql -h localhost -U $DB_USER -p 5432 -d postgres
+# 3. Connect using psql
+# We use 'hostaddr=127.0.0.1' and 'host=postgres-postgresql.postgres.svc.cluster.local' 
+# to satisfy SNI/Hostname verification if required, while connecting to localhost.
+PGPASSWORD=$DB_PASS psql "host=localhost port=5432 dbname=postgres user=$DB_USER sslmode=verify-full sslrootcert=ca.crt"
 ```
 
 ---

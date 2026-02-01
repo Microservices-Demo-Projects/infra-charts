@@ -247,4 +247,3 @@ oc exec -ti vault-0 -n vault -- vault operator seal
 
 3. **Get New Keys:**
     After the threshold is met, the **NEW** keys will be printed. **Save them immediately!** The old keys are now invalid.
-

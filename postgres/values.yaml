@@ -5,13 +5,11 @@ postgresql:
   # Note: Standard Kubernetes will require these to be true or specific IDs set.
   # In OpenShift, the default SCC handles volume permissions.
   podSecurityContext:
-    enabled: true
-    fsGroup: 1001
+    enabled: false
   containerSecurityContext:
-    enabled: true
-    runAsUser: 1001  
+    enabled: false
   volumePermissions:
-     enabled: true
+     enabled: false
 
   tls:
     enabled: true
@@ -25,3 +23,10 @@ postgresql:
     existingSecret: postgres-root-password
     secretKeys:
       adminPasswordKey: password
+
+  primary:
+    initdb:
+      scripts:
+        setup-vault-user.sql: |
+          CREATE USER vault WITH CREATEDB CREATEROLE;
+          GRANT ALL PRIVILEGES ON DATABASE postgres TO vault;

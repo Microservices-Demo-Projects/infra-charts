@@ -8,7 +8,7 @@ spec:
   issuerRef:
     name: demo-ca
     kind: ClusterIssuer
-  commonName: vault.{{ .Release.Namespace }}.svc
+  commonName: vault
   dnsNames:
   - vault
   - vault.{{ .Release.Namespace }}

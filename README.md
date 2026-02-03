@@ -26,7 +26,7 @@ S.No | Component	| Description	| Status
 
 ## Getting Started
 
-Prepare your Cluster: Ensure you have a running Kubernetes or OpenShift cluster. Refer to the [infra-setup]() repository for setup instructions (Local OpenShift - CRC / Kubernetes - Kind; Cloud - EKS, etc.).
+Prepare your Cluster: Ensure you have a running Kubernetes or OpenShift cluster. Refer to the [infra-setup](https://github.com/Microservices-Demo-Projects/infra-setup) repository for setup instructions (Local OpenShift - CRC / Kubernetes - Kind; Cloud - EKS, etc.).
 
 Install Tools: Ensure you have `helm`, `kubectl`, and `oc` (if using OpenShift) installed.
 

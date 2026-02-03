@@ -16,13 +16,13 @@ To ensure a successful deployment, we follow the recommended installation sequen
 
 S.No | Component	| Description	| Status
 | --- | --- | --- | --- |
-1 | [Cert-Manager](./cert-manager/README.md) | Automates TLS certificate issuance and renewal.	| ✅ Ready
-2 | [HashiCorp Vault](./hashicorp-vault/README.md)	| Centralized secret management and dynamic credential generation / rotation. | ✅ Ready
-3 | [External Secrets](./external-secrets/README.md)	| Syncs secrets from Vault into native Kubernetes Secrets. | ✅ Ready
-4 | [PostgreSQL](./postgres/README.md) | Secure, TLS-enabled database with Vault credentail creation / rotation. | ✅ Ready
-5 | [Stakater Reloader](./skater-reloader/README.md)	| Triggers automatic app restarts when Secrets/ConfigMaps change so that the new config / secret values are loaded into the app. | ✅ Ready
-6 | [Headlamp](./headlamp/README.md)	| Modern Kubernetes UI (Dashboard) required only for standard Kubernetes clusters. For OpenShift the native UI is used.	| ✅ Ready
-7 | [Kafka](./kafka/README.md)	| Distributed event streaming platform for high-performance data pipelines.	| ❌ To Do
+1 | [Cert-Manager](./cert-manager/) | Automates TLS certificate issuance and renewal.	| ✅ Ready
+2 | [HashiCorp Vault](./hashicorp-vault/)	| Centralized secret management and dynamic credential generation / rotation. | ✅ Ready
+3 | [External Secrets](./external-secrets/)	| Syncs secrets from Vault into native Kubernetes Secrets. | ✅ Ready
+4 | [PostgreSQL](./postgres/) | Secure, TLS-enabled database with Vault credentail creation / rotation. | ✅ Ready
+5 | [Stakater Reloader](./skater-reloader/)	| Triggers automatic app restarts when Secrets/ConfigMaps change so that the new config / secret values are loaded into the app. | ✅ Ready
+6 | [Headlamp](./headlamp/)	| Modern Kubernetes UI (Dashboard) required only for standard Kubernetes clusters. For OpenShift the native UI is used.	| ✅ Ready
+7 | [Kafka](./kafka/)	| Distributed event streaming platform for high-performance data pipelines.	| ❌ To Do
 
 ## Getting Started
 

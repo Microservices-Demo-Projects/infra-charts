@@ -3,7 +3,7 @@
 This is a wrapper Helm chart for [Bitnami PostgreSQL](https://artifacthub.io/packages/helm/bitnami/postgresql), pre-configured for OpenShift and standard Kubernetes environments.
 
 > [!NOTE]
-> **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
+> **Installation Sequence**: For a complete platform setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
 >
 > 1. [Cert-Manager](../cert-manager/README.md)
 > 2. [Headlamp](../headlamp/README.md) (Optional for OpenShift)

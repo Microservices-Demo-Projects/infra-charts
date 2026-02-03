@@ -6,7 +6,7 @@ This chart installs [Headlamp](https://headlamp-k8s.github.io/headlamp/), an eas
 > **OpenShift Users**: OpenShift includes a built-in web console. This Headlamp installation is **only for standard Kubernetes clusters**. If you're running OpenShift, skip this installation.
 
 > [!NOTE]
-> **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
+> **Installation Sequence**: For a complete platform setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
 >
 > 1. [Cert-Manager](../cert-manager/README.md)
 > 2. **Headlamp** (Current)

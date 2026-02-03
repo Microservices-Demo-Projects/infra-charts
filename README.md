@@ -1,128 +1,36 @@
 # Platform Charts
 
-## Overview
+This repository contains a collection of "Wrapper" Helm charts used to bootstrap a standardized environment on Kubernetes or OpenShift for our POC and Demo projects.
 
-This repository contains infrastructure Helm charts for demo projects created in this github org, including cert-manager, HashiCorp Vault, External Secrets Operator, Stakater Reloader (for dynamic configuration reloading), and other essential infrastructure components.
+The goal of this repository is to provide a consistent "Landing Zone" for applications, ensuring they have immediate access to various application dealing with cross cutting concerns such as security, config / secret management, database services, etc. regardless of the underlying Kubernetes cluster type.
 
-### Prerequisites
+## Platform Architecture
 
-Before using these infrastructure charts, ensure you have the following:
+The following diagram shows how the components interact to create a secure, automated environment. Even though this is a Demo/POC environment, it utilizes mTLS, Certificate Rotation, Secret Orchestration, and various other concepts to mimic a production-grade architecture.
 
-- **Kubernetes or OpenShift Cluster**: The platform charts in this repository are designed to be deployed on either OpenShift or standard Kubernetes environments.
-  - **Local Development**:
-    - **OpenShift**: Follow the steps in the [Local OpenShift Cluster Setup](#local-openshift-cluster-setup---codeready-container) section below to configure a CRC cluster.
-    - **Standard Kubernetes**: Use a local cluster setup such as [Kind](https://kind.sigs.k8s.io/), [Minikube](https://minikube.sigs.k8s.io/), or enable the integrated Kubernetes cluster in [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-  - **Cloud Managed Environments**:
-    - Supports various managed services including AWS EKS, Google GKE, Azure AKS, ROSA, and ARO.
-    - For **AWS EKS** setup, refer to the [eks-infra-setup](https://github.com/Microservices-Demo-Projects/eks-infra-setup) repository in this organization for the Infrastructure as Code (IaC) configuration. For other cloud platforms, please follow the provider's official documentation to set up the cluster on your own.
-
-- **Helm**: Package manager for Kubernetes/OpenShift (v3.x or later recommended)
-
-- **CLI Tools**: `kubectl` or `oc` (OpenShift CLI) for cluster management and operations
-
-## Local OpenShift Cluster Setup - CodeReady Container
-
-- Prerequisites: First, ensure your system meets the requirements:
-  - RAM: Minimum 9 GB (16 GB recommended)
-  - CPU: 4 physical CPU cores
-  - Disk space: 35 GB free space
-  - Operating System: Windows, macOS, or Linux
-
-- Download CRC
-  - Visit the Red Hat OpenShift download page and download CRC for your platform.
-  - Webpage: <https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/crc/latest/>
-  - Optionally for macos you if you know the version you want you can use: <https://developers.redhat.com/content-gateway/file/pub/openshift-v4/clients/crc/2.57.0/crc-macos-installer.pkg>
-
-    ```shell
-    # After installation you can run
-    crc version
-    # Example Output-1:
-    CRC version: 2.57.0+ae41f6
-    OpenShift version: 4.20.5
-    MicroShift version: 4.20.0
-     
-    # NOTE: If there is a newer version this command will give us the newer version URL and you can update it by re-installing the new package. 
-    # Example Output - 2:
-    WARN A new version (2.57.0) has been published on https://developers.redhat.com/content-gateway/file/pub/openshift-v4/clients/crc/2.57.0/crc-macos-installer.pkg
-    CRC version: 2.51.0+80aa80
-    OpenShift version: 4.18.2
-    MicroShift version: 4.18.2
-    ```
-
-  - Create a new local OpenShift cluster by running:
-    > [!NOTE]
-    > Login and download the `pull-secret.txt` file from <https://console.redhat.com/openshift/create/local>
-
-    ```shell
-    # One-time setup (first time or after upgrade)
-    crc setup
-
-    # Download pull secret from console.redhat.com and save it or you can also provide this file path later when `crc start` command prompts for it.
-    crc config set pull-secret-file /path/to/pull-secret.txt
-
-    # Option Resource Configs
-    ## Set custom CPU cores (default is 4)
-    crc config set cpus 10
-
-    ## Set custom memory in MB (default is 10752)
-    crc config set memory 49152
-
-    ## Set disk size in GB (default is 31)
-    crc config set disk-size 120
-
-    ## Set user defined kubeadmin password 
-    crc config set kubeadmin-password Admin@123 #Note, change this example password.
-
-    ## Set user defined developer password
-    crc config set developer-password Dev@123 #Note, change this example password.
-
-    ## Verify or to set other properties
-    crc config view
-    crc config --help
+<!-- Add Diagram Here -->
 
 
-    # Start existing or create new cluster:
-    crc start
+## Components Catalog
+To ensure a successful deployment, we follow the recommended installation sequence documented within each chart's readme.
 
-    # Set up the oc command in your shell
-    eval $(crc oc-env)
-    ```
+S.No | Component	| Description	| Status
+| --- | --- | --- | --- |
+1 | [Cert-Manager](./cert-manager/README.md) | Automates TLS certificate issuance and renewal.	| ✅ Ready
+2 | [HashiCorp Vault](./hashicorp-vault/README.md)	| Centralized secret management and dynamic credential generation / rotation. | ✅ Ready
+3 | [External Secrets](./external-secrets/README.md)	| Syncs secrets from Vault into native Kubernetes Secrets. | ✅ Ready
+4 | [PostgreSQL](./postgres/README.md) | Secure, TLS-enabled database with Vault credentail creation / rotation. | ✅ Ready
+5 | [Stakater Reloader](./skater-reloader/README.md)	| Triggers automatic app restarts when Secrets/ConfigMaps change so that the new config / secret values are loaded into the app. | ✅ Ready
+6 | [Headlamp](./headlamp/README.md)	| Modern Kubernetes UI (Dashboard) required only for standard Kubernetes clusters. For OpenShift the native UI is used.	| ✅ Ready
+7 | [Kafka](./kafka/README.md)	| Distributed event streaming platform for high-performance data pipelines.	| ❌ To Do
 
-- Use the following command to manage the code ready container - OpenShift cluster for local development.
+## Getting Started
 
-  ```shell
-  ###############################
-  # Useful Management Commands
-  ###############################
-  ## Check cluster status
-  crc status
+Prepare your Cluster: Ensure you have a running Kubernetes or OpenShift cluster. Refer to the [infra-setup]() repository for setup instructions (Local OpenShift - CRC / Kubernetes - Kind; Cloud - EKS, etc.).
 
-  ## Stop the cluster
-  crc stop
+Install Tools: Ensure you have `helm`, `kubectl`, and `oc` (if using OpenShift) installed.
 
-  ## Delete the cluster
-  crc delete
+Deploy Components: Navigate to the individual directories above and follow the `README.md` instructions for each component in the suggested order.
 
-  ## Start existing or create new cluster:
-  crc start
-
-  # Set up the oc command in your shell
-  eval $(crc oc-env)
-
-  ## View cluster info
-  crc console --credentials
-
-  # Open the console in browser
-  crc console
-
-  ## View current configuration
-  crc config view
-
-  # Login as admin
-  oc login -u kubeadmin https://api.crc.testing:6443
-  # Enter the password displayed after 'crc start' or `crc console --credentials`
-
-  # Or login as developer
-  oc login -u developer https://api.crc.testing:6443
-  ```
-  
+> [!WARNING]
+> This repository is intended for Demo and POC purposes. While it follows several production ready security best practices, always review configurations before using in a production / critical environment.

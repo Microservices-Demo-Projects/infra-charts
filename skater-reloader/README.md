@@ -3,7 +3,7 @@
 This chart is a wrapper around the official [`stakater/reloader`](https://github.com/stakater/Reloader) chart, configured to work cleanly on **OpenShift** and **standard Kubernetes**.
 
 > [!NOTE]
-> **Installation Sequence** (recommended order for this infra bundle):
+> **Installation Sequence**: For a complete platform setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
 >
 > 1. [Cert-Manager](../cert-manager/README.md)  
 > 2. [Headlamp](../headlamp/README.md) (Optional for OpenShift)  
@@ -53,7 +53,7 @@ stakater-reloader:
 ### 1. Setup
 
 ```bash
-cd infra-charts/skater-reloader
+cd platform-charts/skater-reloader
 
 # Add repository
 helm repo add stakater https://stakater.github.io/stakater-charts

@@ -3,7 +3,7 @@
 This chart is a wrapper around the official [`jetstack/cert-manager`](https://artifacthub.io/packages/helm/cert-manager/cert-manager) chart, configured for OpenShift and standard Kubernetes environments.
 
 > [!NOTE]
-> **Installation Sequence**: For a complete infrastructure setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
+> **Installation Sequence**: For a complete platform setup, required by the Demo / POC Apps in this GitHub Org. follow this order:
 >
 > 1. **Cert-Manager** (Current)
 > 2. [Headlamp](../headlamp/README.md) (Optional for Standard Kubernetes, and not needed for OpenShift)
